@@ -1,0 +1,34 @@
+# Brightness Schedule Configuration
+# Format: 
+#   time: "HH:MM" (24-hour format)
+#   brightness: 0-100 (percentage)
+# 
+# Schedule for HP M24f FHD monitor connected to MacBook M1
+
+schedule:
+  - time: "05:00"  # Dawn
+    brightness: 30
+    
+  - time: "07:00"  # Early morning
+    brightness: 50
+    
+  - time: "09:00"  # Morning
+    brightness: 65
+    
+  - time: "11:00"  # Late morning
+    brightness: 75
+    
+  - time: "13:00"  # Midday
+    brightness: 85
+    
+  - time: "16:00"  # Afternoon
+    brightness: 70
+    
+  - time: "18:00"  # Early evening
+    brightness: 60
+    
+  - time: "20:00"  # Evening
+    brightness: 50
+    
+  - time: "22:00"  # Night
+    brightness: 35 
