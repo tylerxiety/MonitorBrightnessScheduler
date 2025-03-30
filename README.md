@@ -1,5 +1,7 @@
 # Monitor Brightness Scheduler
 
+English | [简体中文](README_zh.md)
+
 A Python-based scheduler for automatically adjusting external monitor brightness based on time of day. This tool is specifically configured for an HP M24f FHD monitor connected to a MacBook with M1 chip via HDMI cable, using Lunar's CLI interface.
 
 ## Requirements
@@ -7,7 +9,7 @@ A Python-based scheduler for automatically adjusting external monitor brightness
 - macOS 11+ (Big Sur or newer)
 - MacBook with M1 chip
 - HP M24f FHD monitor connected via HDMI
-- Python 3.6+
+- Python 3.8+
 - [Lunar app](https://lunar.fyi/) (free version works fine)
 
 ## Installation
