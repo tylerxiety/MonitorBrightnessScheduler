@@ -5,6 +5,9 @@ import subprocess
 import time
 from datetime import datetime
 
+# Add PID file path
+PID_FILE = "scheduler.pid"
+
 def print_usage():
     print("Usage:")
     print("  monitor_brightness_control.py start - Start the brightness scheduler")
@@ -13,14 +16,32 @@ def print_usage():
     print("  monitor_brightness_control.py test <brightness> - Test setting brightness to the specified level (0-100)")
 
 def is_process_running(process_name):
+    # First check if PID file exists
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE, 'r') as f:
+                pid = int(f.read().strip())
+            
+            # Check if process with this PID exists
+            try:
+                os.kill(pid, 0)  # Signal 0 doesn't kill the process, just checks if it exists
+                return True
+            except OSError:
+                # Process doesn't exist despite having a PID file
+                os.remove(PID_FILE)  # Clean up stale PID file
+        except (ValueError, IOError) as e:
+            print(f"Error reading PID file: {e}")
+            if os.path.exists(PID_FILE):
+                os.remove(PID_FILE)
+    
+    # Fallback to pgrep if PID file doesn't exist or is invalid
     try:
-        # Check if the process is running
         result = subprocess.run(
             ["pgrep", "-f", process_name],
             capture_output=True,
             text=True
         )
-        return result.returncode == 0
+        return bool(result.stdout.strip())
     except Exception as e:
         print(f"Error checking process status: {e}")
         return False
@@ -33,20 +54,45 @@ def start_scheduler():
     # Start the scheduler in the background
     try:
         # Use nohup to keep the process running after terminal closes
-        subprocess.Popen(
-            ["nohup", "python3", "src/monitor_brightness_scheduler.py", "&"],
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        scheduler_path = os.path.join(script_dir, "monitor_brightness_scheduler.py")
+        
+        # Fix the subprocess call to properly launch in background
+        process = subprocess.Popen(
+            ["nohup", "python3", scheduler_path],
             stdout=open("scheduler.log", "a"),
             stderr=subprocess.STDOUT,
-            preexec_fn=os.setpgrp
+            preexec_fn=os.setpgrp,
+            start_new_session=True
         )
+        
+        # Save PID to file
+        with open(PID_FILE, 'w') as f:
+            f.write(str(process.pid))
+            
         print("Brightness scheduler started")
     except Exception as e:
         print(f"Error starting scheduler: {e}")
 
 def stop_scheduler():
     try:
-        # Find and kill the scheduler process
+        # First try to kill using PID file
+        if os.path.exists(PID_FILE):
+            with open(PID_FILE, 'r') as f:
+                pid = int(f.read().strip())
+            try:
+                os.kill(pid, 15)  # SIGTERM
+                if os.path.exists(PID_FILE):
+                    os.remove(PID_FILE)
+                print("Brightness scheduler stopped")
+                return
+            except (ProcessLookupError, PermissionError) as e:
+                print(f"Could not stop using PID file: {e}")
+                
+        # Fallback to pkill
         subprocess.run(["pkill", "-f", "python.*monitor_brightness_scheduler.py"])
+        if os.path.exists(PID_FILE):
+            os.remove(PID_FILE)
         print("Brightness scheduler stopped")
     except Exception as e:
         print(f"Error stopping scheduler: {e}")
@@ -72,8 +118,10 @@ def test_brightness(brightness):
     
     # Use the new Lunar-based script to control brightness
     try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        lunar_script_path = os.path.join(script_dir, "lunar_brightness.py")
         result = subprocess.run(
-            ["python3", "src/lunar_brightness.py", "set", str(brightness_level)],
+            ["python3", lunar_script_path, "set", str(brightness_level)],
             capture_output=True,
             text=True
         )

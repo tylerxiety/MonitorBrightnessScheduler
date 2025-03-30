@@ -31,3 +31,12 @@ wheels/
 .vscode/
 *.swp
 *.swo 
+
+# specstory
+.specstory/
+
+# archive
+archive/
+
+# vscode
+.vscode/

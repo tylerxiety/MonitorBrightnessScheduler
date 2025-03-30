@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 import logging
 import signal
 
+# PID file path (same as in monitor_brightness_control.py)
+PID_FILE = "scheduler.pid"
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -26,8 +29,18 @@ class BrightnessScheduler:
         self.schedule = []
         self.running = True
         self.setup_signal_handlers()
+        self.write_pid()
         self.load_schedule()
         
+    def write_pid(self):
+        """Write current process PID to file"""
+        try:
+            with open(PID_FILE, 'w') as f:
+                f.write(str(os.getpid()))
+            logger.info(f"PID {os.getpid()} written to {PID_FILE}")
+        except Exception as e:
+            logger.error(f"Failed to write PID file: {e}")
+    
     def setup_signal_handlers(self):
         """Set up handlers for signals"""
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -37,6 +50,15 @@ class BrightnessScheduler:
         """Handle signals to gracefully shutdown"""
         logger.info(f"Received signal {sig}, shutting down...")
         self.running = False
+        
+        # Clean up PID file on exit
+        if os.path.exists(PID_FILE):
+            try:
+                os.remove(PID_FILE)
+                logger.info(f"Removed PID file {PID_FILE}")
+            except Exception as e:
+                logger.error(f"Failed to remove PID file: {e}")
+        
         sys.exit(0)
         
     def load_schedule(self):
@@ -80,10 +102,10 @@ class BrightnessScheduler:
         return sorted_schedule[-1]['brightness']
         
     def set_brightness(self, brightness):
-        """Set the monitor brightness using osx_brightness.py"""
+        """Set the monitor brightness using lunar_brightness.py"""
         try:
-            # Call the osx_brightness.py script
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "osx_brightness.py")
+            # Call the lunar_brightness.py script
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lunar_brightness.py")
             result = subprocess.run(
                 [sys.executable, script_path, "set", str(brightness)],
                 capture_output=True,

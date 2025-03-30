@@ -9,6 +9,7 @@ import time
 class LunarBrightnessController:
     def __init__(self):
         self.lunar_app = "/Applications/Lunar.app"
+        self.lunar_cli = "/Applications/Lunar.app/Contents/MacOS/Lunar"
         # Check if Lunar is installed
         if not os.path.exists(self.lunar_app):
             print("Error: Lunar is not installed in the default location.")
@@ -17,6 +18,9 @@ class LunarBrightnessController:
         
         # Ensure Lunar is running
         self._ensure_lunar_running()
+        
+        # Install CLI if not already installed
+        self._ensure_cli_installed()
 
     def _ensure_lunar_running(self):
         """Make sure Lunar is running"""
@@ -35,85 +39,139 @@ class LunarBrightnessController:
                 time.sleep(3)
         except Exception as e:
             print(f"Error checking/starting Lunar: {e}")
-
-    def _run_applescript(self, script):
-        """Run AppleScript and return the result"""
+            
+    def _ensure_cli_installed(self):
+        """Make sure the Lunar CLI is installed"""
         try:
-            proc = subprocess.run(
-                ["osascript", "-e", script],
+            # Check if lunar command is available in the path
+            result = subprocess.run(
+                ["which", "lunar"],
                 capture_output=True,
                 text=True
             )
-            if proc.returncode != 0:
-                print(f"AppleScript error: {proc.stderr}")
-                return None
-            return proc.stdout.strip()
+            if result.returncode != 0:
+                # CLI not installed, install it
+                print("Installing Lunar CLI...")
+                install_result = subprocess.run(
+                    [self.lunar_cli, "install-cli"], 
+                    capture_output=True,
+                    text=True
+                )
+                if install_result.returncode != 0:
+                    print(f"Error installing Lunar CLI: {install_result.stderr}")
+                    print("You may need to run the Lunar app manually and set up the CLI from the app settings.")
+                else:
+                    print("Lunar CLI installed successfully")
+                    # Wait a moment for installation to complete
+                    time.sleep(1)
         except Exception as e:
-            print(f"Error running AppleScript: {e}")
-            return None
+            print(f"Error installing Lunar CLI: {e}")
+            print("Please make sure Lunar app is installed and running before using this script.")
 
     def list_displays(self):
-        """List all connected displays using AppleScript"""
-        script = '''
-        tell application "Lunar"
-            set allDisplays to get name of every display
-            return allDisplays
-        end tell
-        '''
-        return self._run_applescript(script)
+        """List all connected displays using Lunar CLI"""
+        try:
+            result = subprocess.run(
+                ["lunar", "displays"],
+                capture_output=True,
+                text=True
+            )
+            return result.stdout.strip()
+        except Exception as e:
+            print(f"Error listing displays: {e}")
+            return None
 
     def get_display_info(self):
-        """Get information about connected displays using AppleScript"""
-        # First get display names
-        names_script = '''
-        tell application "Lunar"
-            set displayNames to get name of every display
-            return displayNames
-        end tell
-        '''
-        display_names = self._run_applescript(names_script)
-        if not display_names:
+        """Get information about connected displays using Lunar CLI"""
+        try:
+            result = subprocess.run(
+                ["lunar", "displays", "--json"],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode != 0:
+                print(f"Error getting display info: {result.stderr}")
+                return None
+                
+            # Parse JSON output
+            try:
+                displays_data = json.loads(result.stdout)
+                displays = {}
+                
+                # Format the display data for our use
+                # The JSON returns an object with serial numbers as keys
+                for i, (serial, display) in enumerate(displays_data.items()):
+                    display_id = str(i+1)
+                    displays[display_id] = {
+                        "name": display.get("name", "Unknown Display"),
+                        "id": display_id,
+                        "serial": serial,
+                        "model": display.get("edidName", ""),
+                        "brightness": display.get("brightness", 50),
+                        "lunar_id": display.get("id", i+1)  # Lunar's internal ID
+                    }
+                
+                return displays
+            except json.JSONDecodeError as e:
+                print(f"Error parsing display info JSON: {e}")
+                print(f"Raw output: {result.stdout[:200]}...")  # Print first 200 chars for debugging
+                return None
+                
+        except Exception as e:
+            print(f"Error getting display info: {e}")
             return None
-            
-        # Parse the display names - they come as a comma-separated list
-        names = [name.strip() for name in display_names.split(",")]
-        
-        # Create a dictionary of display information
-        displays = {}
-        for i, name in enumerate(names):
-            displays[str(i+1)] = {"name": name, "id": str(i+1)}
-            
-        return displays
 
     def set_brightness(self, display_id, brightness_percent):
-        """Set brightness for a specific display using AppleScript"""
+        """Set brightness for a specific display using Lunar CLI"""
         brightness = int(brightness_percent)
         if brightness < 0 or brightness > 100:
             print("Error: Brightness must be between 0 and 100")
             return False
         
-        # Get display info to find the name
+        # Get display info to find the name or serial
         displays = self.get_display_info()
         if not displays or display_id not in displays:
             print(f"Error: Display ID {display_id} not found")
             return False
             
         display_name = displays[display_id]["name"]
+        display_serial = displays[display_id]["serial"]
         
-        # Set brightness using AppleScript
-        script = f'''
-        tell application "Lunar"
-            set brightness of display "{display_name}" to {brightness}
-            return "Success"
-        end tell
-        '''
-        
-        result = self._run_applescript(script)
-        if result and "Success" in result:
-            print(f"Successfully set brightness to {brightness}% for display {display_name}")
-            return True
-        else:
-            print(f"Failed to set brightness for display {display_name}")
+        try:
+            # Use the lunar CLI to set brightness by serial
+            # Note: Lunar CLI needs the serial number, not the display ID
+            
+            result = subprocess.run(
+                ["lunar", "displays", display_serial, "brightness", str(brightness)],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                print(f"Successfully set brightness to {brightness}% for display {display_name}")
+                return True
+            else:
+                print(f"Failed to set brightness: {result.stderr}")
+                # Try fallback method using index
+                lunar_id = displays[display_id].get("lunar_id", int(display_id))
+                print(f"Trying fallback method with ID: {lunar_id}")
+                
+                result = subprocess.run(
+                    ["lunar", "displays", str(lunar_id-1), "brightness", str(brightness)],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    print(f"Successfully set brightness to {brightness}% using fallback method")
+                    return True
+                else:
+                    print(f"Fallback method also failed: {result.stderr}")
+                    return False
+                
+        except Exception as e:
+            print(f"Error setting brightness: {e}")
             return False
 
     def set_hp_monitor_brightness(self, brightness_percent):
@@ -124,30 +182,36 @@ class LunarBrightnessController:
             
         hp_monitor = None
         for display_id, display_info in displays.items():
-            # Look for an HP monitor in the connected displays, specifically targeting the M24f model
+            # Look for an HP monitor in the connected displays
             display_name = display_info.get("name", "")
-            if "HP" in display_name:
+            display_model = display_info.get("model", "")
+            
+            # Check both name and model fields for "HP"
+            if "HP" in display_name or "HP" in display_model:
                 # Check if it's specifically the M24f model
-                if "M24f" in display_name:
+                if "M24f" in display_name or "M24f" in display_model:
                     hp_monitor = {
                         "id": display_id,
-                        "name": display_name
+                        "name": display_name,
+                        "model": display_model
                     }
                     break
                 # Otherwise keep the first HP monitor found
                 elif not hp_monitor:
                     hp_monitor = {
                         "id": display_id,
-                        "name": display_name
+                        "name": display_name,
+                        "model": display_model
                     }
                 
         if not hp_monitor:
             print("No HP monitor found among connected displays")
             print("Connected displays:")
-            print(self.list_displays())
+            for display_id, display_info in displays.items():
+                print(f"  {display_id}: {display_info['name']} ({display_info['model']})")
             return False
             
-        print(f"Found HP monitor: {hp_monitor['name']}")
+        print(f"Found HP monitor: {hp_monitor['name']} ({hp_monitor['model']})")
         return self.set_brightness(hp_monitor["id"], brightness_percent)
 
 def main():

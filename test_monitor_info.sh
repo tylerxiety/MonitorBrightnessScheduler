@@ -41,4 +41,4 @@ fi
 
 echo
 echo "=== Scheduler Status ==="
-python "${PROJECT_DIR}/monitor_brightness_control.py" status 
+python "${PROJECT_DIR}/src/monitor_brightness_control.py" status 

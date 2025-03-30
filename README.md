@@ -14,7 +14,7 @@ A Python-based scheduler for automatically adjusting external monitor brightness
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/monitor_brightness_scheduler.git
+   git clone https://github.com/tylerxiety/monitor_brightness_scheduler.git
    cd monitor_brightness_scheduler
    ```
 
@@ -31,7 +31,7 @@ A Python-based scheduler for automatically adjusting external monitor brightness
 
 4. Install required dependencies:
    ```
-   pip install pyyaml
+   pip install -r requirements.txt
    ```
 
 ## Configuration
@@ -67,7 +67,7 @@ This will display information about connected monitors and their current setting
 To test if your monitor's brightness can be controlled:
 
 ```
-python monitor_brightness_control.py test 50  # Test setting brightness to 50%
+python src/monitor_brightness_control.py test 50  # Test setting brightness to 50%
 ```
 
 ### Manual Control
@@ -76,13 +76,16 @@ Start, stop, and check the scheduler status:
 
 ```
 # Start the scheduler
-python monitor_brightness_control.py start
+python main.py start
 
 # Check status
-python monitor_brightness_control.py status
+python main.py status
 
 # Stop the scheduler
-python monitor_brightness_control.py stop
+python main.py stop
+
+# Test setting brightness to 50%
+python src/monitor_brightness_control.py test 50
 ```
 
 ### Automatic Startup
@@ -104,13 +107,32 @@ This will install a LaunchAgent that starts the scheduler when you log into your
 4. The scheduler automatically handles monitor disconnections and reconnections
 5. The brightness is only adjusted when it needs to change, to minimize unnecessary updates
 
+## Project Structure
+
+```
+monitor_brightness_scheduler/
+├── config/                   # Configuration files
+│   └── brightness_schedule.yaml  # Schedule configuration
+├── src/                      # Source code
+│   ├── __init__.py           # Package initialization
+│   ├── lunar_applescript.scpt # AppleScript for Lunar integration
+│   ├── lunar_brightness.py   # Lunar brightness control module
+│   ├── monitor_brightness_control.py  # CLI interface for controlling the scheduler
+│   └── monitor_brightness_scheduler.py # Main scheduler implementation
+├── main.py                   # Entry point script
+├── install_startup.sh        # Script to install LaunchAgent
+├── start_monitor_brightness.sh # Script for automated startup
+├── requirements.txt          # Python dependencies
+└── README.md                 # Documentation
+```
+
 ## Troubleshooting
 
 - If Lunar doesn't recognize your HP M24f FHD monitor, open the Lunar app and check if it appears in the monitor list
 - For M1 MacBooks with HDMI connections, make sure you're using a high-quality HDMI cable
 - Check the logs in `scheduler.log` for any error messages
 - If the scheduler isn't starting, verify that Lunar app is running
-- Run `./test_monitor_info.sh` to verify that your monitor is properly detected
+- If `test_monitor_info.sh` doesn't exist, run `lunar list` in Terminal to check connected monitors
 
 ## License
 
