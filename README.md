@@ -16,8 +16,8 @@ A Python-based scheduler for automatically adjusting external monitor brightness
 
 1. Clone this repository:
    ```
-   git clone https://github.com/tylerxiety/monitor_brightness_scheduler.git
-   cd monitor_brightness_scheduler
+   git clone https://github.com/tylerxiety/MonitorBrightnessScheduler.git
+   cd MonitorBrightnessScheduler
    ```
 
 2. Install Lunar app if you haven't already:

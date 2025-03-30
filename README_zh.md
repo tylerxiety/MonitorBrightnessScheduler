@@ -1,6 +1,6 @@
 # 显示器亮度调度器
 
-[English](README.md) | 中文
+[English](README.md) | 简体中文
 
 这是一个基于Python的调度器，可以根据一天中的时间自动调整外接显示器的亮度。该工具专为通过HDMI线缆连接到M1芯片MacBook的HP M24f FHD显示器配置，使用Lunar的命令行界面。
 
@@ -16,8 +16,8 @@
 
 1. 克隆此仓库：
    ```
-   git clone https://github.com/tylerxiety/monitor_brightness_scheduler.git
-   cd monitor_brightness_scheduler
+   git clone https://github.com/tylerxiety/MonitorBrightnessScheduler.git
+   cd MonitorBrightnessScheduler
    ```
 
 2. 如果尚未安装Lunar应用：
